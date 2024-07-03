@@ -5,18 +5,18 @@
  * the crash screen implemented by fault.c
  */
 #include "global.h"
-#include "vt.h"
+#include "terminal.h"
 
 typedef struct {
     /* 0x00 */ u16* fb;
     /* 0x04 */ u16 w;
-    /* 0x08 */ u16 h;
-    /* 0x0A */ u16 yStart;
-    /* 0x0C */ u16 yEnd;
-    /* 0x0E */ u16 xStart;
-    /* 0x10 */ u16 xEnd;
-    /* 0x12 */ u16 foreColor;
-    /* 0x14 */ u16 backColor;
+    /* 0x06 */ u16 h;
+    /* 0x08 */ u16 yStart;
+    /* 0x0A */ u16 yEnd;
+    /* 0x0C */ u16 xStart;
+    /* 0x0E */ u16 xEnd;
+    /* 0x10 */ u16 foreColor;
+    /* 0x12 */ u16 backColor;
     /* 0x14 */ u16 cursorX;
     /* 0x16 */ u16 cursorY;
     /* 0x18 */ const u32* fontData;
@@ -235,7 +235,7 @@ void FaultDrawer_FillScreen(void) {
     FaultDrawer_SetCursor(sFaultDrawer.xStart, sFaultDrawer.yStart);
 }
 
-void* FaultDrawer_PrintCallback(void* arg, const char* str, u32 count) {
+void* FaultDrawer_PrintCallback(void* arg, const char* str, size_t count) {
     for (; count != 0; count--, str++) {
         s32 curXStart;
         s32 curXEnd;

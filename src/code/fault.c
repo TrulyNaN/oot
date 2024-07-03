@@ -35,14 +35,23 @@
  *  - End Screen
  *      This page informs you that there are no more pages to display.
  *
- * To navigate the pages, START and A may be used to advance to the next page, and L toggles whether to
+ * To navigate the pages, DPad-Right or A may be used to advance to the next page, and L toggles whether to
  * automatically scroll to the next page after some time has passed.
  * DPad-Up may be pressed to enable sending fault pages over osSyncPrintf as well as displaying them on-screen.
  * DPad-Down disables sending fault pages over osSyncPrintf.
  */
 #include "global.h"
-#include "vt.h"
+#include "terminal.h"
 #include "alloca.h"
+
+// For retail BSS ordering, the block number of sFaultInstance must be 0 or
+// just above (the exact upper bound depends on the block numbers assigned to
+// extern variables declared in headers).
+#if OOT_DEBUG
+#pragma increment_block_number 0
+#else
+#pragma increment_block_number 20
+#endif
 
 void FaultDrawer_Init(void);
 void FaultDrawer_SetOsSyncPrintfEnabled(u32 enabled);
@@ -76,12 +85,11 @@ const char* sFpExceptionNames[] = {
     "Unimplemented operation", "Invalid operation", "Division by zero", "Overflow", "Underflow", "Inexact operation",
 };
 
-// TODO: import .bss (has reordering issues)
-extern FaultMgr* sFaultInstance;
-extern u8 sFaultAwaitingInput;
-extern STACK(sFaultStack, 0x600);
-extern StackEntry sFaultThreadInfo;
-extern FaultMgr gFaultMgr;
+FaultMgr* sFaultInstance;
+u8 sFaultAwaitingInput;
+STACK(sFaultStack, 0x600);
+StackEntry sFaultThreadInfo;
+FaultMgr gFaultMgr;
 
 typedef struct {
     /* 0x00 */ s32 (*callback)(void*, void*);
@@ -335,7 +343,7 @@ uintptr_t Fault_ConvertAddress(uintptr_t addr) {
 
     while (client != NULL) {
         if (client->callback != NULL) {
-            ret = Fault_ProcessClient(client->callback, addr, client->arg);
+            ret = Fault_ProcessClient(client->callback, (void*)addr, client->arg);
             if (ret == -1) {
                 Fault_RemoveAddrConvClient(client);
             } else if (ret != 0) {
@@ -352,18 +360,25 @@ void Fault_Sleep(u32 msec) {
     Fault_SleepImpl(msec);
 }
 
-void PadMgr_RequestPadData(Input* input, s32 mode);
+#ifndef AVOID_UB
+void PadMgr_RequestPadData(Input* inputs, s32 gameRequest);
+#endif
 
-void Fault_PadCallback(Input* input) {
+void Fault_PadCallback(Input* inputs) {
     //! @bug This function is not called correctly, it is missing a leading PadMgr* argument. This
     //! renders the crash screen unusable.
     //! In Majora's Mask, PadMgr functions were changed to not require this argument, and this was
     //! likely just not addressed when backporting.
-    PadMgr_RequestPadData(input, 0);
+#ifndef AVOID_UB
+    PadMgr_RequestPadData(inputs, false);
+#else
+    // Guarantee crashing behavior: false -> NULL, previous value in a2 is more often non-zero than zero
+    PadMgr_RequestPadData((PadMgr*)inputs, NULL, true);
+#endif
 }
 
 void Fault_UpdatePadImpl(void) {
-    sFaultInstance->padCallback(&sFaultInstance->padInput);
+    sFaultInstance->padCallback(sFaultInstance->inputs);
 }
 
 /**
@@ -376,7 +391,7 @@ void Fault_UpdatePadImpl(void) {
  * DPad-Left continues and returns false
  */
 u32 Fault_WaitForInputImpl(void) {
-    Input* input = &sFaultInstance->padInput;
+    Input* input = &sFaultInstance->inputs[0];
     s32 count = 600;
     u32 pressedBtn;
 
@@ -651,7 +666,7 @@ void Fault_Wait5Seconds(void) {
  * (L & R & Z) + DPad-Up + C-Down + C-Up + DPad-Down + DPad-Left + C-Left + C-Right + DPad-Right + (B & A & START)
  */
 void Fault_WaitForButtonCombo(void) {
-    Input* input = &sFaultInstance->padInput;
+    Input* input = &sFaultInstance->inputs[0];
     s32 state;
     u32 s1;
     u32 s2;
@@ -853,7 +868,7 @@ void Fault_DrawMemDumpContents(const char* title, uintptr_t addr, u32 arg2) {
  * @param cRightJump Unused parameter, pressing C-Right jumps to this address
  */
 void Fault_DrawMemDump(uintptr_t pc, uintptr_t sp, uintptr_t cLeftJump, uintptr_t cRightJump) {
-    Input* input = &sFaultInstance->padInput;
+    Input* input = &sFaultInstance->inputs[0];
     uintptr_t addr = pc;
     s32 scrollCountdown;
     u32 off;
@@ -896,6 +911,8 @@ void Fault_DrawMemDump(uintptr_t pc, uintptr_t sp, uintptr_t cLeftJump, uintptr_
         } while (input->press.button == 0);
 
         // Move to next page
+        //! @bug DPad-Right does not move to the next page, unlike when on any other page
+        // START moving to the next page is unique to this page.
         if (CHECK_BTN_ALL(input->press.button, BTN_START) || CHECK_BTN_ALL(input->cur.button, BTN_A)) {
             return;
         }
@@ -1093,9 +1110,9 @@ void Fault_ResumeThread(OSThread* thread) {
     thread->context.cause = 0;
     thread->context.fpcsr = 0;
     thread->context.pc += sizeof(u32);
-    *(u32*)thread->context.pc = 0x0000000D; // write in a break instruction
-    osWritebackDCache(thread->context.pc, 4);
-    osInvalICache(thread->context.pc, 4);
+    *((u32*)thread->context.pc) = 0x0000000D; // write in a break instruction
+    osWritebackDCache((void*)thread->context.pc, 4);
+    osInvalICache((void*)thread->context.pc, 4);
     osStartThread(thread);
 }
 
@@ -1112,7 +1129,7 @@ void Fault_DisplayFrameBuffer(void) {
     } else {
         fb = osViGetNextFramebuffer();
         if ((uintptr_t)fb == K0BASE) {
-            fb = (PHYS_TO_K0(osMemSize) - sizeof(u16[SCREEN_HEIGHT][SCREEN_WIDTH]));
+            fb = (void*)(PHYS_TO_K0(osMemSize) - sizeof(u16[SCREEN_HEIGHT][SCREEN_WIDTH]));
         }
     }
 
@@ -1264,8 +1281,8 @@ void Fault_Init(void) {
     sFaultInstance->autoScroll = false;
     gFaultMgr.faultHandlerEnabled = true;
     osCreateMesgQueue(&sFaultInstance->queue, &sFaultInstance->msg, 1);
-    StackCheck_Init(&sFaultThreadInfo, &sFaultStack, STACK_TOP(sFaultStack), 0, 0x100, "fault");
-    osCreateThread(&sFaultInstance->thread, THREAD_ID_FAULT, Fault_ThreadEntry, 0, STACK_TOP(sFaultStack),
+    StackCheck_Init(&sFaultThreadInfo, sFaultStack, STACK_TOP(sFaultStack), 0, 0x100, "fault");
+    osCreateThread(&sFaultInstance->thread, THREAD_ID_FAULT, Fault_ThreadEntry, NULL, STACK_TOP(sFaultStack),
                    THREAD_PRI_FAULT);
     osStartThread(&sFaultInstance->thread);
 }
@@ -1288,19 +1305,25 @@ void Fault_HungupFaultClient(const char* exp1, const char* exp2) {
  * error occurs. The parameters specify two messages detailing the error, one
  * or both may be NULL.
  */
-void Fault_AddHungupAndCrashImpl(const char* exp1, const char* exp2) {
+NORETURN void Fault_AddHungupAndCrashImpl(const char* exp1, const char* exp2) {
     FaultClient client;
     s32 pad;
 
     Fault_AddClient(&client, Fault_HungupFaultClient, (void*)exp1, (void*)exp2);
     *(u32*)0x11111111 = 0; // trigger an exception via unaligned memory access
+
+    // Since the above line triggers an exception and transfers execution to the fault handler
+    // this function does not return and the rest of the function is unreachable.
+#ifdef __GNUC__
+    __builtin_unreachable();
+#endif
 }
 
 /**
  * Like `Fault_AddHungupAndCrashImpl`, however provides a fixed message containing
  * filename and line number
  */
-void Fault_AddHungupAndCrash(const char* file, s32 line) {
+NORETURN void Fault_AddHungupAndCrash(const char* file, int line) {
     char msg[256];
 
     sprintf(msg, "HungUp %s:%d", file, line);

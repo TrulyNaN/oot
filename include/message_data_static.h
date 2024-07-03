@@ -21,8 +21,8 @@ typedef enum {
 typedef enum {
     /* 0 */ TEXTBOX_POS_VARIABLE,
     /* 1 */ TEXTBOX_POS_TOP,
-    /* 2 */ TEXTBOX_POS_BOTTOM,
-    /* 3 */ TEXTBOX_POS_MIDDLE
+    /* 2 */ TEXTBOX_POS_MIDDLE,
+    /* 3 */ TEXTBOX_POS_BOTTOM
 } TextBoxPosition;
 
 typedef struct {
@@ -47,9 +47,12 @@ typedef struct {
     extern const char _message_##textId##_ger[]; \
     extern const char _message_##textId##_fra[];
 
+#define DEFINE_MESSAGE_NES(textId, type, yPos, nesMessage) \
+    extern const char _message_##textId##_nes[];
+
 #include "assets/text/message_data.h"
-extern const char _message_0xFFFC_nes[];
 
 #undef DEFINE_MESSAGE
+#undef DEFINE_MESSAGE_NES
 
 #endif

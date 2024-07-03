@@ -13,19 +13,19 @@
 
 void ObjSyokudai_Init(Actor* thisx, PlayState* play);
 void ObjSyokudai_Destroy(Actor* thisx, PlayState* play);
-void ObjSyokudai_Update(Actor* thisx, PlayState* play);
+void ObjSyokudai_Update(Actor* thisx, PlayState* play2);
 void ObjSyokudai_Draw(Actor* thisx, PlayState* play);
 
-const ActorInit Obj_Syokudai_InitVars = {
-    ACTOR_OBJ_SYOKUDAI,
-    ACTORCAT_PROP,
-    FLAGS,
-    OBJECT_SYOKUDAI,
-    sizeof(ObjSyokudai),
-    (ActorFunc)ObjSyokudai_Init,
-    (ActorFunc)ObjSyokudai_Destroy,
-    (ActorFunc)ObjSyokudai_Update,
-    (ActorFunc)ObjSyokudai_Draw,
+ActorInit Obj_Syokudai_InitVars = {
+    /**/ ACTOR_OBJ_SYOKUDAI,
+    /**/ ACTORCAT_PROP,
+    /**/ FLAGS,
+    /**/ OBJECT_SYOKUDAI,
+    /**/ sizeof(ObjSyokudai),
+    /**/ ObjSyokudai_Init,
+    /**/ ObjSyokudai_Destroy,
+    /**/ ObjSyokudai_Update,
+    /**/ ObjSyokudai_Draw,
 };
 
 static ColliderCylinderInit sCylInitStand = {
@@ -41,8 +41,8 @@ static ColliderCylinderInit sCylInitStand = {
         ELEMTYPE_UNK2,
         { 0x00100000, 0x00, 0x00 },
         { 0xEE01FFFF, 0x00, 0x00 },
-        TOUCH_NONE,
-        BUMP_ON | BUMP_HOOKABLE,
+        ATELEM_NONE,
+        ACELEM_ON | ACELEM_HOOKABLE,
         OCELEM_ON,
     },
     { 12, 45, 0, { 0, 0, 0 } },
@@ -61,8 +61,8 @@ static ColliderCylinderInit sCylInitFlame = {
         ELEMTYPE_UNK2,
         { 0x00000000, 0x00, 0x00 },
         { 0x00020820, 0x00, 0x00 },
-        TOUCH_NONE,
-        BUMP_ON,
+        ATELEM_NONE,
+        ACELEM_ON,
         OCELEM_NONE,
     },
     { 15, 45, 45, { 0, 0, 0 } },
@@ -171,11 +171,11 @@ void ObjSyokudai_Update(Actor* thisx, PlayState* play2) {
             }
         }
         if (this->colliderFlame.base.acFlags & AC_HIT) {
-            dmgFlags = this->colliderFlame.info.acHitInfo->toucher.dmgFlags;
+            dmgFlags = this->colliderFlame.elem.acHitElem->atDmgInfo.dmgFlags;
             if (dmgFlags & (DMG_FIRE | DMG_ARROW_NORMAL)) {
                 interactionType = 1;
             }
-        } else if (player->heldItemActionParam == PLAYER_AP_STICK) {
+        } else if (player->heldItemAction == PLAYER_IA_DEKU_STICK) {
             Math_Vec3f_Diff(&player->meleeWeaponInfo[0].tip, &this->actor.world.pos, &tipToFlame);
             tipToFlame.y -= 67.0f;
             if ((SQ(tipToFlame.x) + SQ(tipToFlame.y) + SQ(tipToFlame.z)) < SQ(20.0f)) {
@@ -187,9 +187,9 @@ void ObjSyokudai_Update(Actor* thisx, PlayState* play2) {
                 if (interactionType < 0) {
                     if (player->unk_860 == 0) {
                         player->unk_860 = 210;
-                        Audio_PlaySoundGeneral(NA_SE_EV_FLAME_IGNITION, &this->actor.projectedPos, 4,
-                                               &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale,
-                                               &gSfxDefaultReverb);
+                        Audio_PlaySfxGeneral(NA_SE_EV_FLAME_IGNITION, &this->actor.projectedPos, 4,
+                                             &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale,
+                                             &gSfxDefaultReverb);
                     } else if (player->unk_860 < 200) {
                         player->unk_860 = 200;
                     }
@@ -197,7 +197,7 @@ void ObjSyokudai_Update(Actor* thisx, PlayState* play2) {
                     arrow = (EnArrow*)this->colliderFlame.base.ac;
                     if ((arrow->actor.update != NULL) && (arrow->actor.id == ACTOR_EN_ARROW)) {
                         arrow->actor.params = 0;
-                        arrow->collider.info.toucher.dmgFlags = DMG_ARROW_FIRE;
+                        arrow->collider.elem.atDmgInfo.dmgFlags = DMG_ARROW_FIRE;
                     }
                 }
                 if ((0 <= this->litTimer) && (this->litTimer < (50 * litTimeScale + 100)) && (torchType != 0)) {
@@ -225,8 +225,8 @@ void ObjSyokudai_Update(Actor* thisx, PlayState* play2) {
                         this->litTimer = (litTimeScale * 50) + 110;
                     }
                 }
-                Audio_PlaySoundGeneral(NA_SE_EV_FLAME_IGNITION, &this->actor.projectedPos, 4,
-                                       &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+                Audio_PlaySfxGeneral(NA_SE_EV_FLAME_IGNITION, &this->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                                     &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
             }
         }
     }
@@ -268,7 +268,7 @@ void ObjSyokudai_Draw(Actor* thisx, PlayState* play) {
     OPEN_DISPS(play->state.gfxCtx, "../z_obj_syokudai.c", 707);
     Gfx_SetupDL_25Opa(play->state.gfxCtx);
 
-    gSPMatrix(POLY_OPA_DISP++, Matrix_NewMtx(play->state.gfxCtx, "../z_obj_syokudai.c", 714),
+    gSPMatrix(POLY_OPA_DISP++, MATRIX_NEW(play->state.gfxCtx, "../z_obj_syokudai.c", 714),
               G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     gSPDisplayList(POLY_OPA_DISP++, displayLists[(u16)this->actor.params >> 0xC]);
@@ -283,11 +283,13 @@ void ObjSyokudai_Draw(Actor* thisx, PlayState* play) {
         }
         flameScale *= 0.0027f;
 
+        if (1) {}
+
         Gfx_SetupDL_25Xlu(play->state.gfxCtx);
 
         gSPSegment(POLY_XLU_DISP++, 0x08,
-                   Gfx_TwoTexScroll(play->state.gfxCtx, 0, 0, 0, 0x20, 0x40, 1, 0, (this->flameTexScroll * -20) & 0x1FF,
-                                    0x20, 0x80));
+                   Gfx_TwoTexScroll(play->state.gfxCtx, G_TX_RENDERTILE, 0, 0, 0x20, 0x40, 1, 0,
+                                    (this->flameTexScroll * -20) & 0x1FF, 0x20, 0x80));
 
         gDPSetPrimColor(POLY_XLU_DISP++, 0x80, 0x80, 255, 255, 0, 255);
 
@@ -299,7 +301,7 @@ void ObjSyokudai_Draw(Actor* thisx, PlayState* play) {
             MTXMODE_APPLY);
         Matrix_Scale(flameScale, flameScale, flameScale, MTXMODE_APPLY);
 
-        gSPMatrix(POLY_XLU_DISP++, Matrix_NewMtx(play->state.gfxCtx, "../z_obj_syokudai.c", 745),
+        gSPMatrix(POLY_XLU_DISP++, MATRIX_NEW(play->state.gfxCtx, "../z_obj_syokudai.c", 745),
                   G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
         gSPDisplayList(POLY_XLU_DISP++, gEffFire1DL);

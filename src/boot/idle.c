@@ -1,13 +1,18 @@
 #include "global.h"
-#include "vt.h"
+#include "terminal.h"
 
-OSThread gMainThread;
+// For retail BSS ordering, the block number of sMainThread must be 0 or
+// just above (the exact upper bound depends on the block numbers assigned to
+// extern variables declared in headers).
+#pragma increment_block_number 60
+
+OSThread sMainThread;
 STACK(sMainStack, 0x900);
 StackEntry sMainStackInfo;
 OSMesg sPiMgrCmdBuff[50];
 OSMesgQueue gPiMgrCmdQueue;
 OSViMode gViConfigMode;
-u8 D_80013960;
+u8 gViConfigModeType;
 
 s8 D_80009430 = 1;
 vu8 gViConfigBlack = true;
@@ -19,35 +24,36 @@ f32 gViConfigYScale = 1.0;
 void Main_ThreadEntry(void* arg) {
     OSTime time;
 
-    osSyncPrintf("mainx 実行開始\n");
+    PRINTF("mainx 実行開始\n");
     DmaMgr_Init();
-    osSyncPrintf("codeセグメントロード中...");
+    PRINTF("codeセグメントロード中...");
     time = osGetTime();
-    DmaMgr_SendRequest1(_codeSegmentStart, (u32)_codeSegmentRomStart, _codeSegmentRomEnd - _codeSegmentRomStart,
-                        "../idle.c", 238);
+    DMA_REQUEST_SYNC(_codeSegmentStart, (uintptr_t)_codeSegmentRomStart, _codeSegmentRomEnd - _codeSegmentRomStart,
+                     "../idle.c", 238);
     time -= osGetTime();
-    osSyncPrintf("\rcodeセグメントロード中...完了\n");
-    osSyncPrintf("転送時間 %6.3f\n");
+    PRINTF("\rcodeセグメントロード中...完了\n");
+    PRINTF("転送時間 %6.3f\n");
     bzero(_codeSegmentBssStart, _codeSegmentBssEnd - _codeSegmentBssStart);
-    osSyncPrintf("codeセグメントBSSクリア完了\n");
+    PRINTF("codeセグメントBSSクリア完了\n");
     Main(arg);
-    osSyncPrintf("mainx 実行終了\n");
+    PRINTF("mainx 実行終了\n");
 }
 
 void Idle_ThreadEntry(void* arg) {
-    osSyncPrintf("アイドルスレッド(idleproc)実行開始\n");
-    osSyncPrintf("作製者    : %s\n", gBuildTeam);
-    osSyncPrintf("作成日時  : %s\n", gBuildDate);
-    osSyncPrintf("MAKEOPTION: %s\n", gBuildMakeOption);
-    osSyncPrintf(VT_FGCOL(GREEN));
-    osSyncPrintf("ＲＡＭサイズは %d キロバイトです(osMemSize/osGetMemSize)\n", (s32)osMemSize / 1024);
-    osSyncPrintf("_bootSegmentEnd(%08x) 以降のＲＡＭ領域はクリアされました(boot)\n", _bootSegmentEnd);
-    osSyncPrintf("Ｚバッファのサイズは %d キロバイトです\n", 0x96);
-    osSyncPrintf("ダイナミックバッファのサイズは %d キロバイトです\n", 0x92);
-    osSyncPrintf("ＦＩＦＯバッファのサイズは %d キロバイトです\n", 0x60);
-    osSyncPrintf("ＹＩＥＬＤバッファのサイズは %d キロバイトです\n", 3);
-    osSyncPrintf("オーディオヒープのサイズは %d キロバイトです\n", ((s32)gSystemHeap - (s32)gAudioHeap) / 1024);
-    osSyncPrintf(VT_RST);
+    PRINTF("アイドルスレッド(idleproc)実行開始\n");
+    PRINTF("作製者    : %s\n", gBuildTeam);
+    PRINTF("作成日時  : %s\n", gBuildDate);
+    PRINTF("MAKEOPTION: %s\n", gBuildMakeOption);
+    PRINTF(VT_FGCOL(GREEN));
+    PRINTF("ＲＡＭサイズは %d キロバイトです(osMemSize/osGetMemSize)\n", (s32)osMemSize / 1024);
+    PRINTF("_bootSegmentEnd(%08x) 以降のＲＡＭ領域はクリアされました(boot)\n", _bootSegmentEnd);
+    PRINTF("Ｚバッファのサイズは %d キロバイトです\n", 0x96);
+    PRINTF("ダイナミックバッファのサイズは %d キロバイトです\n", 0x92);
+    PRINTF("ＦＩＦＯバッファのサイズは %d キロバイトです\n", 0x60);
+    PRINTF("ＹＩＥＬＤバッファのサイズは %d キロバイトです\n", 3);
+    PRINTF("オーディオヒープのサイズは %d キロバイトです\n",
+           ((intptr_t)&gAudioHeap[ARRAY_COUNT(gAudioHeap)] - (intptr_t)gAudioHeap) / 1024);
+    PRINTF(VT_RST);
 
     osCreateViManager(OS_PRIORITY_VIMGR);
 
@@ -56,35 +62,38 @@ void Idle_ThreadEntry(void* arg) {
     gViConfigYScale = 1.0f;
 
     switch (osTvType) {
+#if !OOT_DEBUG
+        case OS_TV_PAL:
+#endif
         case OS_TV_NTSC:
-            D_80013960 = 2;
+            gViConfigModeType = OS_VI_NTSC_LAN1;
             gViConfigMode = osViModeNtscLan1;
             break;
 
         case OS_TV_MPAL:
-            D_80013960 = 0x1E;
+            gViConfigModeType = OS_VI_MPAL_LAN1;
             gViConfigMode = osViModeMpalLan1;
             break;
 
+#if OOT_DEBUG
         case OS_TV_PAL:
-            D_80013960 = 0x2C;
+            gViConfigModeType = OS_VI_FPAL_LAN1;
             gViConfigMode = osViModeFpalLan1;
             gViConfigYScale = 0.833f;
             break;
+#endif
     }
 
     D_80009430 = 1;
     osViSetMode(&gViConfigMode);
     ViConfig_UpdateVi(true);
     osViBlack(true);
-    osViSwapBuffer(0x803DA80); //! @bug Invalid vram address (probably intended to be 0x803DA800)
+    osViSwapBuffer((void*)0x803DA80); //! @bug Invalid vram address (probably intended to be 0x803DA800)
     osCreatePiManager(OS_PRIORITY_PIMGR, &gPiMgrCmdQueue, sPiMgrCmdBuff, ARRAY_COUNT(sPiMgrCmdBuff));
     StackCheck_Init(&sMainStackInfo, sMainStack, STACK_TOP(sMainStack), 0, 0x400, "main");
-    osCreateThread(&gMainThread, THREAD_ID_MAIN, Main_ThreadEntry, arg, STACK_TOP(sMainStack), THREAD_PRI_MAIN_INIT);
-    osStartThread(&gMainThread);
+    osCreateThread(&sMainThread, THREAD_ID_MAIN, Main_ThreadEntry, arg, STACK_TOP(sMainStack), THREAD_PRI_MAIN_INIT);
+    osStartThread(&sMainThread);
     osSetThreadPri(NULL, OS_PRIORITY_IDLE);
 
-    while (1) {
-        ;
-    }
+    for (;;) {}
 }

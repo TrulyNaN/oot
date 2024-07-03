@@ -14,16 +14,16 @@ void EnMag_Destroy(Actor* thisx, PlayState* play);
 void EnMag_Update(Actor* thisx, PlayState* play);
 void EnMag_Draw(Actor* thisx, PlayState* play);
 
-const ActorInit En_Mag_InitVars = {
-    ACTOR_EN_MAG,
-    ACTORCAT_PROP,
-    FLAGS,
-    OBJECT_MAG,
-    sizeof(EnMag),
-    (ActorFunc)EnMag_Init,
-    (ActorFunc)EnMag_Destroy,
-    (ActorFunc)EnMag_Update,
-    (ActorFunc)EnMag_Draw,
+ActorInit En_Mag_InitVars = {
+    /**/ ACTOR_EN_MAG,
+    /**/ ACTORCAT_PROP,
+    /**/ FLAGS,
+    /**/ OBJECT_MAG,
+    /**/ sizeof(EnMag),
+    /**/ EnMag_Init,
+    /**/ EnMag_Destroy,
+    /**/ EnMag_Update,
+    /**/ EnMag_Draw,
 };
 
 static s16 sDelayTimer = 0;
@@ -68,7 +68,7 @@ void EnMag_Init(Actor* thisx, PlayState* play) {
     this->effectFadeInState = this->effectPrimLodFrac = this->globalState = this->effectAlpha = this->mainAlpha =
         this->subAlpha = this->copyrightAlpha = 0.0f;
 
-    if (gSaveContext.unk_13E7 != 0) {
+    if (gSaveContext.forceRisingButtonAlphas) {
         this->mainAlpha = 210;
         this->subAlpha = 255;
         this->copyrightAlpha = 255;
@@ -76,14 +76,22 @@ void EnMag_Init(Actor* thisx, PlayState* play) {
         this->effectPrimLodFrac = 128.0f;
         this->effectAlpha = 255.0f;
 
+#if !OOT_MQ
+        this->effectPrimColor[0] = 255.0f;
+        this->effectPrimColor[1] = 255.0f;
+        this->effectPrimColor[2] = 170;
+        this->effectEnvColor[0] = 255.0f;
+        this->effectEnvColor[1] = 100;
+#else
         this->effectPrimColor[0] = 170;
         this->effectPrimColor[1] = 255.0f;
         this->effectPrimColor[2] = 255.0f;
         this->effectEnvColor[0] = 200.0f;
         this->effectEnvColor[1] = 255.0f;
         this->effectEnvColor[2] = 0;
+#endif
 
-        gSaveContext.unk_13E7 = 0;
+        gSaveContext.forceRisingButtonAlphas = false;
         this->globalState = MAG_STATE_DISPLAY;
         sDelayTimer = 20;
         gSaveContext.transFadeDuration = 1;
@@ -111,8 +119,8 @@ void EnMag_Update(Actor* thisx, PlayState* play) {
                 CHECK_BTN_ALL(play->state.input[0].press.button, BTN_A) ||
                 CHECK_BTN_ALL(play->state.input[0].press.button, BTN_B)) {
 
-                Audio_PlaySoundGeneral(NA_SE_SY_PIECE_OF_HEART, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
-                                       &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+                Audio_PlaySfxGeneral(NA_SE_SY_PIECE_OF_HEART, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                                     &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
 
                 this->mainAlpha = 210;
                 this->subAlpha = 255;
@@ -121,12 +129,20 @@ void EnMag_Update(Actor* thisx, PlayState* play) {
                 this->effectPrimLodFrac = 128.0f;
                 this->effectAlpha = 255.0f;
 
+#if !OOT_MQ
+                this->effectPrimColor[0] = 255.0f;
+                this->effectPrimColor[1] = 255.0f;
+                this->effectPrimColor[2] = 170;
+                this->effectEnvColor[0] = 255.0f;
+                this->effectEnvColor[1] = 100;
+#else
                 this->effectPrimColor[0] = 170;
                 this->effectPrimColor[1] = 255.0f;
                 this->effectPrimColor[2] = 255.0f;
                 this->effectEnvColor[0] = 200.0f;
                 this->effectEnvColor[1] = 255.0f;
                 this->effectEnvColor[2] = 0;
+#endif
 
                 this->globalState = MAG_STATE_DISPLAY;
                 sDelayTimer = 20;
@@ -142,10 +158,10 @@ void EnMag_Update(Actor* thisx, PlayState* play) {
                     if (play->transitionTrigger != TRANS_TRIGGER_START) {
                         Audio_SetCutsceneFlag(0);
 
-                        Audio_PlaySoundGeneral(NA_SE_SY_PIECE_OF_HEART, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
-                                               &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+                        Audio_PlaySfxGeneral(NA_SE_SY_PIECE_OF_HEART, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                                             &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
 
-                        gSaveContext.gameMode = 2;
+                        gSaveContext.gameMode = GAMEMODE_FILE_SELECT;
                         play->transitionTrigger = TRANS_TRIGGER_START;
                         play->transitionType = TRANS_TYPE_FADE_BLACK;
                     }
@@ -187,8 +203,13 @@ void EnMag_Update(Actor* thisx, PlayState* play) {
                 this->effectFadeInState = 1;
             }
         } else if (this->effectFadeInState == 1) {
+#if !OOT_MQ
+            this->effectPrimColor[2] += -2.125f;
+            this->effectEnvColor[1] += -3.875f;
+#else
             this->effectPrimColor[0] += -2.125f;
             this->effectEnvColor[0] += -1.375f;
+#endif
 
             this->effectPrimLodFrac += 2.4f;
 
@@ -197,8 +218,13 @@ void EnMag_Update(Actor* thisx, PlayState* play) {
             if (this->effectFadeInTimer == 0) {
                 this->effectPrimLodFrac = 128.0f;
 
+#if !OOT_MQ
+                this->effectPrimColor[2] = 170.0f;
+                this->effectEnvColor[1] = 100.0f;
+#else
                 this->effectPrimColor[0] = 170.0f;
                 this->effectEnvColor[0] = 200.0f;
+#endif
 
                 this->effectFadeInTimer = 32;
                 this->effectFadeInState = 2;
@@ -251,20 +277,20 @@ void EnMag_Update(Actor* thisx, PlayState* play) {
     }
 
     if (this->globalState == MAG_STATE_INITIAL) {
-        if (Flags_GetEnv(play, 3)) {
+        if (CutsceneFlags_Get(play, 3)) {
             this->effectFadeInTimer = 40;
             this->globalState = MAG_STATE_FADE_IN;
         }
     } else if (this->globalState == MAG_STATE_DISPLAY) {
-        if (Flags_GetEnv(play, 4)) {
+        if (CutsceneFlags_Get(play, 4)) {
             this->globalState = MAG_STATE_FADE_OUT;
         }
     }
 }
 
-void EnMag_DrawTextureI8(Gfx** gfxp, void* texture, s16 texWidth, s16 texHeight, s16 rectLeft, s16 rectTop,
+void EnMag_DrawTextureI8(Gfx** gfxP, void* texture, s16 texWidth, s16 texHeight, s16 rectLeft, s16 rectTop,
                          s16 rectWidth, s16 rectHeight, u16 dsdx, u16 dtdy) {
-    Gfx* gfx = *gfxp;
+    Gfx* gfx = *gfxP;
 
     gDPLoadTextureBlock(gfx++, texture, G_IM_FMT_I, G_IM_SIZ_8b, texWidth, texHeight, 0, G_TX_NOMIRROR | G_TX_WRAP,
                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
@@ -272,32 +298,33 @@ void EnMag_DrawTextureI8(Gfx** gfxp, void* texture, s16 texWidth, s16 texHeight,
     gSPTextureRectangle(gfx++, rectLeft << 2, rectTop << 2, (rectLeft + rectWidth) << 2, (rectTop + rectHeight) << 2,
                         G_TX_RENDERTILE, 0, 0, dsdx, dtdy);
 
-    *gfxp = gfx;
+    *gfxP = gfx;
 }
 
-void EnMag_DrawEffectTextures(Gfx** gfxp, void* maskTex, void* effectTex, s16 maskWidth, s16 maskHeight,
+void EnMag_DrawEffectTextures(Gfx** gfxP, void* maskTex, void* effectTex, s16 maskWidth, s16 maskHeight,
                               s16 effectWidth, s16 effectHeight, s16 rectLeft, s16 rectTop, s16 rectWidth,
                               s16 rectHeight, u16 dsdx, u16 dtdy, u16 shifts, u16 shiftt, u16 flag, EnMag* this) {
-    Gfx* gfx = *gfxp;
+    Gfx* gfx = *gfxP;
 
-    gDPLoadMultiBlock_4b(gfx++, maskTex, 0x0000, 0, G_IM_FMT_I, maskWidth, maskHeight, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    gDPLoadMultiBlock_4b(gfx++, maskTex, 0x0000, G_TX_RENDERTILE, G_IM_FMT_I, maskWidth, maskHeight, 0,
+                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD,
+                         G_TX_NOLOD);
 
     if (!flag) {
         gDPLoadMultiBlock(gfx++, effectTex, 0x0100, 1, G_IM_FMT_I, G_IM_SIZ_8b, effectWidth, effectHeight, 0,
                           G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, 5, shifts, shiftt);
 
-        gDPSetTileSize(gfx++, 1, 0, this->effectScroll & 0x7F, 0x7C, (this->effectScroll & 0x7F) + 0x7C);
+        gDPSetTileSize(gfx++, 1, 0, this->effectScroll & 0x7F, 31 << 2, (31 << 2) + (this->effectScroll & 0x7F));
     }
 
     gSPTextureRectangle(gfx++, rectLeft << 2, rectTop << 2, (rectLeft + rectWidth) << 2, (rectTop + rectHeight) << 2,
                         G_TX_RENDERTILE, 0, 0, dsdx, dtdy);
 
-    *gfxp = gfx;
+    *gfxP = gfx;
 }
 
-void EnMag_DrawImageRGBA32(Gfx** gfxp, s16 centerX, s16 centerY, u8* source, u32 width, u32 height) {
-    Gfx* gfx = *gfxp;
+void EnMag_DrawImageRGBA32(Gfx** gfxP, s16 centerX, s16 centerY, u8* source, u32 width, u32 height) {
+    Gfx* gfx = *gfxP;
     u8* curTexture;
     s32 textureCount;
     u32 rectLeft;
@@ -352,11 +379,11 @@ void EnMag_DrawImageRGBA32(Gfx** gfxp, s16 centerX, s16 centerY, u8* source, u32
         }
     }
 
-    *gfxp = gfx;
+    *gfxP = gfx;
 }
 
-void EnMag_DrawCharTexture(Gfx** gfxp, u8* texture, s32 rectLeft, s32 rectTop) {
-    Gfx* gfx = *gfxp;
+void EnMag_DrawCharTexture(Gfx** gfxP, u8* texture, s32 rectLeft, s32 rectTop) {
+    Gfx* gfx = *gfxP;
 
     YREG(0) = 1024.0f / (YREG(1) / 100.0f);
     YREG(2) = 16.0f * (YREG(1) / 100.0f);
@@ -367,10 +394,17 @@ void EnMag_DrawCharTexture(Gfx** gfxp, u8* texture, s32 rectLeft, s32 rectTop) {
     gSPTextureRectangle(gfx++, rectLeft << 2, rectTop << 2, (rectLeft + YREG(2)) << 2, (rectTop + YREG(2)) << 2,
                         G_TX_RENDERTILE, 0, 0, YREG(0), YREG(0));
 
-    *gfxp = gfx;
+    *gfxP = gfx;
 }
 
-void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxp) {
+// Title logo is shifted to the left in Master Quest
+#if !OOT_MQ
+#define LOGO_X_SHIFT 0
+#else
+#define LOGO_X_SHIFT (-8)
+#endif
+
+void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxP) {
     static s16 textAlpha = 0;
     static s16 textFadeDirection = 0;
     static s16 textFadeTimer = 0;
@@ -388,12 +422,12 @@ void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxp) {
     EnMag* this = (EnMag*)thisx;
     Font* font = &this->font;
     s32 pad;
-    Gfx* gfx = *gfxp;
+    Gfx* gfx = *gfxP;
     u16 i, j, k;
     u16 rectLeft;
     u16 rectTop;
 
-    gSPSegment(gfx++, 0x06, play->objectCtx.status[this->actor.objBankIndex].segment);
+    gSPSegment(gfx++, 0x06, play->objectCtx.slots[this->actor.objectSlot].segment);
 
     Gfx_SetupDL_39Ptr(&gfx);
 
@@ -412,7 +446,7 @@ void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxp) {
 
     if ((s16)this->effectPrimLodFrac != 0) {
         for (k = 0, i = 0, rectTop = 0; i < 3; i++, rectTop += 64) {
-            for (j = 0, rectLeft = 56; j < 3; j++, k++, rectLeft += 64) {
+            for (j = 0, rectLeft = 64 + LOGO_X_SHIFT; j < 3; j++, k++, rectLeft += 64) {
                 EnMag_DrawEffectTextures(&gfx, effectMaskTextures[k], gTitleFlameEffectTex, 64, 64, 32, 32, rectLeft,
                                          rectTop, 64, 64, 1024, 1024, 1, 1, k, this);
             }
@@ -422,7 +456,7 @@ void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxp) {
     gDPSetPrimColor(gfx++, 0, 0, 255, 255, 255, (s16)this->mainAlpha);
 
     if ((s16)this->mainAlpha != 0) {
-        EnMag_DrawImageRGBA32(&gfx, 152, 100, (u8*)gTitleZeldaShieldLogoMQTex, 160, 160);
+        EnMag_DrawImageRGBA32(&gfx, 160 + LOGO_X_SHIFT, 100, (u8*)gTitleZeldaShieldLogoTex, 160, 160);
     }
 
     Gfx_SetupDL_39Ptr(&gfx);
@@ -439,23 +473,35 @@ void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxp) {
     }
 
     gDPSetPrimColor(gfx++, 0, 0, 0, 0, 0, (s16)this->mainAlpha);
+#if !OOT_MQ
+    gDPSetEnvColor(gfx++, 100, 0, 100, 255);
+#else
     gDPSetEnvColor(gfx++, 0, 0, 100, 255);
+#endif
 
     if ((s16)this->mainAlpha != 0) {
-        EnMag_DrawTextureI8(&gfx, gTitleTheLegendOfTextTex, 72, 8, 146, 73, 72, 8, 1024, 1024);
-        EnMag_DrawTextureI8(&gfx, gTitleOcarinaOfTimeTMTextTex, 96, 8, 144, 127, 96, 8, 1024, 1024);
+        EnMag_DrawTextureI8(&gfx, gTitleTheLegendOfTextTex, 72, 8, 154 + LOGO_X_SHIFT, 73, 72, 8, 1024, 1024);
+        EnMag_DrawTextureI8(&gfx, gTitleOcarinaOfTimeTMTextTex, 96, 8, 152 + LOGO_X_SHIFT, 127, 96, 8, 1024, 1024);
 
         gDPPipeSync(gfx++);
+
+#if !OOT_MQ
+        gDPSetPrimColor(gfx++, 0, 0, 200, 200, 150, (s16)this->mainAlpha);
+        gDPSetEnvColor(gfx++, 100, 100, 50, 255);
+#else
         gDPSetPrimColor(gfx++, 0, 0, 100, 150, 255, (s16)this->mainAlpha);
         gDPSetEnvColor(gfx++, 20, 80, 160, 255);
+#endif
 
-        EnMag_DrawTextureI8(&gfx, gTitleTheLegendOfTextTex, 72, 8, 145, 72, 72, 8, 1024, 1024);
-        EnMag_DrawTextureI8(&gfx, gTitleOcarinaOfTimeTMTextTex, 96, 8, 143, 126, 96, 8, 1024, 1024);
+        EnMag_DrawTextureI8(&gfx, gTitleTheLegendOfTextTex, 72, 8, 153 + LOGO_X_SHIFT, 72, 72, 8, 1024, 1024);
+        EnMag_DrawTextureI8(&gfx, gTitleOcarinaOfTimeTMTextTex, 96, 8, 151 + LOGO_X_SHIFT, 126, 96, 8, 1024, 1024);
 
+#if OOT_MQ
         gDPPipeSync(gfx++);
         gDPSetPrimColor(gfx++, 0, 0, 255, 255, 255, (s16)this->subAlpha);
 
         EnMag_DrawImageRGBA32(&gfx, 174, 145, (u8*)gTitleMasterQuestSubtitleTex, 128, 32);
+#endif
     }
 
     Gfx_SetupDL_39Ptr(&gfx);
@@ -471,7 +517,7 @@ void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxp) {
                             G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK,
                             G_TX_NOLOD, G_TX_NOLOD);
 
-        gSPTextureRectangle(gfx++, 312, 792, 952, 856, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
+        gSPTextureRectangle(gfx++, 78 << 2, 198 << 2, 238 << 2, 214 << 2, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
     }
 
     if (gSaveContext.fileNum == 0xFEDC) {
@@ -558,7 +604,7 @@ void EnMag_DrawInner(Actor* thisx, PlayState* play, Gfx** gfxp) {
         }
     }
 
-    *gfxp = gfx;
+    *gfxP = gfx;
 }
 
 void EnMag_Draw(Actor* thisx, PlayState* play) {
@@ -569,13 +615,13 @@ void EnMag_Draw(Actor* thisx, PlayState* play) {
     OPEN_DISPS(play->state.gfxCtx, "../z_en_mag.c", 1151);
 
     gfxRef = POLY_OPA_DISP;
-    gfx = Graph_GfxPlusOne(gfxRef);
+    gfx = Gfx_Open(gfxRef);
     gSPDisplayList(OVERLAY_DISP++, gfx);
 
     EnMag_DrawInner(thisx, play, &gfx);
 
     gSPEndDisplayList(gfx++);
-    Graph_BranchDlist(gfxRef, gfx);
+    Gfx_Close(gfxRef, gfx);
     POLY_OPA_DISP = gfx;
 
     CLOSE_DISPS(play->state.gfxCtx, "../z_en_mag.c", 1161);

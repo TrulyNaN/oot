@@ -30,16 +30,16 @@ typedef enum {
     /* 0x04 */ DF_SCREEN_TINT_FINISHED
 } MagicFireScreenTint;
 
-const ActorInit Magic_Fire_InitVars = {
-    ACTOR_MAGIC_FIRE,
-    ACTORCAT_ITEMACTION,
-    FLAGS,
-    OBJECT_GAMEPLAY_KEEP,
-    sizeof(MagicFire),
-    (ActorFunc)MagicFire_Init,
-    (ActorFunc)MagicFire_Destroy,
-    (ActorFunc)MagicFire_Update,
-    (ActorFunc)MagicFire_Draw,
+ActorInit Magic_Fire_InitVars = {
+    /**/ ACTOR_MAGIC_FIRE,
+    /**/ ACTORCAT_ITEMACTION,
+    /**/ FLAGS,
+    /**/ OBJECT_GAMEPLAY_KEEP,
+    /**/ sizeof(MagicFire),
+    /**/ MagicFire_Init,
+    /**/ MagicFire_Destroy,
+    /**/ MagicFire_Update,
+    /**/ MagicFire_Draw,
 };
 
 #include "assets/overlays/ovl_Magic_Fire/ovl_Magic_Fire.c"
@@ -57,8 +57,8 @@ static ColliderCylinderInit sCylinderInit = {
         ELEMTYPE_UNK0,
         { 0x00020000, 0x00, 0x01 },
         { 0x00000000, 0x00, 0x00 },
-        TOUCH_ON | TOUCH_SFX_NONE,
-        BUMP_NONE,
+        ATELEM_ON | ATELEM_SFX_NONE,
+        ACELEM_NONE,
         OCELEM_NONE,
     },
     { 9, 9, 0, { 0, 0, 0 } },
@@ -99,15 +99,19 @@ void MagicFire_UpdateBeforeCast(Actor* thisx, PlayState* play) {
     MagicFire* this = (MagicFire*)thisx;
     Player* player = GET_PLAYER(play);
 
+    // See `ACTOROVL_ALLOC_ABSOLUTE`
+    //! @bug This condition is too broad, the actor will also be killed by warp songs. But warp songs do not use an
+    //! actor which uses `ACTOROVL_ALLOC_ABSOLUTE`. There is no reason to kill the actor in this case.
     if ((play->msgCtx.msgMode == MSGMODE_OCARINA_CORRECT_PLAYBACK) || (play->msgCtx.msgMode == MSGMODE_SONG_PLAYED)) {
         Actor_Kill(&this->actor);
         return;
     }
+
     if (this->actionTimer > 0) {
         this->actionTimer--;
     } else {
         this->actor.update = MagicFire_Update;
-        func_8002F7DC(&player->actor, NA_SE_PL_MAGIC_FIRE);
+        Player_PlaySfx(player, NA_SE_PL_MAGIC_FIRE);
     }
     this->actor.world.pos = player->actor.world.pos;
 }
@@ -119,14 +123,19 @@ void MagicFire_Update(Actor* thisx, PlayState* play) {
 
     if (1) {}
     this->actor.world.pos = player->actor.world.pos;
+
+    // See `ACTOROVL_ALLOC_ABSOLUTE`
+    //! @bug This condition is too broad, the actor will also be killed by warp songs. But warp songs do not use an
+    //! actor which uses `ACTOROVL_ALLOC_ABSOLUTE`. There is no reason to kill the actor in this case.
     if ((play->msgCtx.msgMode == MSGMODE_OCARINA_CORRECT_PLAYBACK) || (play->msgCtx.msgMode == MSGMODE_SONG_PLAYED)) {
         Actor_Kill(&this->actor);
         return;
     }
+
     if (this->action == DF_ACTION_EXPAND_SLOWLY) {
-        this->collider.info.toucher.damage = this->actionTimer + 25;
+        this->collider.elem.atDmgInfo.damage = this->actionTimer + 25;
     } else if (this->action == DF_ACTION_STOP_EXPANDING) {
-        this->collider.info.toucher.damage = this->actionTimer;
+        this->collider.elem.atDmgInfo.damage = this->actionTimer;
     }
     Collider_UpdateCylinder(&this->actor, &this->collider);
     this->collider.dim.radius = (this->actor.scale.x * 325.0f);
@@ -228,7 +237,7 @@ void MagicFire_Draw(Actor* thisx, PlayState* play) {
         gDPSetPrimColor(POLY_XLU_DISP++, 0, 128, 255, 200, 0, (u8)(this->alphaMultiplier * 255));
         gDPSetEnvColor(POLY_XLU_DISP++, 255, 0, 0, (u8)(this->alphaMultiplier * 255));
         Matrix_Scale(0.15f, 0.15f, 0.15f, MTXMODE_APPLY);
-        gSPMatrix(POLY_XLU_DISP++, Matrix_NewMtx(play->state.gfxCtx, "../z_magic_fire.c", 715),
+        gSPMatrix(POLY_XLU_DISP++, MATRIX_NEW(play->state.gfxCtx, "../z_magic_fire.c", 715),
                   G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gDPPipeSync(POLY_XLU_DISP++);
         gSPTexture(POLY_XLU_DISP++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
@@ -237,10 +246,10 @@ void MagicFire_Draw(Actor* thisx, PlayState* play) {
                             G_TX_NOMIRROR | G_TX_WRAP, 6, 6, 15, G_TX_NOLOD);
         gDPSetTile(POLY_XLU_DISP++, G_IM_FMT_I, G_IM_SIZ_8b, 8, 0, 1, 0, G_TX_NOMIRROR | G_TX_WRAP, 6, 14,
                    G_TX_NOMIRROR | G_TX_WRAP, 6, 14);
-        gDPSetTileSize(POLY_XLU_DISP++, 1, 0, 0, 252, 252);
+        gDPSetTileSize(POLY_XLU_DISP++, 1, 0, 0, 63 << 2, 63 << 2);
         gSPDisplayList(POLY_XLU_DISP++, sMaterialDL);
         gSPDisplayList(POLY_XLU_DISP++,
-                       Gfx_TwoTexScroll(play->state.gfxCtx, 0, (gameplayFrames * 2) % 512,
+                       Gfx_TwoTexScroll(play->state.gfxCtx, G_TX_RENDERTILE, (gameplayFrames * 2) % 512,
                                         511 - ((gameplayFrames * 5) % 512), 64, 64, 1, (gameplayFrames * 2) % 256,
                                         255 - ((gameplayFrames * 20) % 256), 32, 32));
         gSPDisplayList(POLY_XLU_DISP++, sModelDL);

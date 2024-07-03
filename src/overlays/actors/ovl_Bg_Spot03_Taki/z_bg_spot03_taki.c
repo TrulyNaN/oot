@@ -16,16 +16,16 @@ void BgSpot03Taki_Draw(Actor* thisx, PlayState* play);
 
 void func_808ADEF0(BgSpot03Taki* this, PlayState* play);
 
-const ActorInit Bg_Spot03_Taki_InitVars = {
-    ACTOR_BG_SPOT03_TAKI,
-    ACTORCAT_BG,
-    FLAGS,
-    OBJECT_SPOT03_OBJECT,
-    sizeof(BgSpot03Taki),
-    (ActorFunc)BgSpot03Taki_Init,
-    (ActorFunc)BgSpot03Taki_Destroy,
-    (ActorFunc)BgSpot03Taki_Update,
-    (ActorFunc)BgSpot03Taki_Draw,
+ActorInit Bg_Spot03_Taki_InitVars = {
+    /**/ ACTOR_BG_SPOT03_TAKI,
+    /**/ ACTORCAT_BG,
+    /**/ FLAGS,
+    /**/ OBJECT_SPOT03_OBJECT,
+    /**/ sizeof(BgSpot03Taki),
+    /**/ BgSpot03Taki_Init,
+    /**/ BgSpot03Taki_Destroy,
+    /**/ BgSpot03Taki_Update,
+    /**/ BgSpot03Taki_Draw,
 };
 
 static InitChainEntry sInitChain[] = {
@@ -48,7 +48,7 @@ void BgSpot03Taki_Init(Actor* thisx, PlayState* play) {
     CollisionHeader* colHeader = NULL;
 
     this->switchFlag = (this->dyna.actor.params & 0x3F);
-    DynaPolyActor_Init(&this->dyna, DPM_UNK);
+    DynaPolyActor_Init(&this->dyna, 0);
     CollisionHeader_GetVirtual(&object_spot03_object_Col_000C98, &colHeader);
     this->dyna.bgId = DynaPoly_SetBgActor(play, &play->colCtx.dyna, &this->dyna.actor, colHeader);
     Actor_ProcessInitChain(&this->dyna.actor, sInitChain);
@@ -81,7 +81,7 @@ void func_808ADEF0(BgSpot03Taki* this, PlayState* play) {
         if (this->openingAlpha > 0) {
             this->openingAlpha -= 5;
             if (this->openingAlpha <= 0.0f) {
-                func_8003EBF8(play, &play->colCtx.dyna, this->dyna.bgId);
+                DynaPoly_DisableCollision(play, &play->colCtx.dyna, this->dyna.bgId);
                 this->timer = 400;
                 this->state = WATERFALL_OPENED;
                 this->openingAlpha = 0;
@@ -96,7 +96,7 @@ void func_808ADEF0(BgSpot03Taki* this, PlayState* play) {
         if (this->openingAlpha < 255.0f) {
             this->openingAlpha += 5.0f;
             if (this->openingAlpha >= 255.0f) {
-                func_8003EC50(play, &play->colCtx.dyna, this->dyna.bgId);
+                DynaPoly_EnableCollision(play, &play->colCtx.dyna, this->dyna.bgId);
                 this->state = WATERFALL_CLOSED;
                 this->openingAlpha = 255.0f;
                 Flags_UnsetSwitch(play, this->switchFlag);
@@ -122,14 +122,14 @@ void BgSpot03Taki_Draw(Actor* thisx, PlayState* play) {
 
     gameplayFrames = play->gameplayFrames;
 
-    gSPMatrix(POLY_XLU_DISP++, Matrix_NewMtx(play->state.gfxCtx, "../z_bg_spot03_taki.c", 325),
+    gSPMatrix(POLY_XLU_DISP++, MATRIX_NEW(play->state.gfxCtx, "../z_bg_spot03_taki.c", 325),
               G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     Gfx_SetupDL_25Xlu(play->state.gfxCtx);
 
-    gSPSegment(
-        POLY_XLU_DISP++, 0x08,
-        Gfx_TwoTexScroll(play->state.gfxCtx, 0, 0, gameplayFrames * 5, 64, 64, 1, 0, gameplayFrames * 5, 64, 64));
+    gSPSegment(POLY_XLU_DISP++, 0x08,
+               Gfx_TwoTexScroll(play->state.gfxCtx, G_TX_RENDERTILE, 0, gameplayFrames * 5, 64, 64, 1, 0,
+                                gameplayFrames * 5, 64, 64));
 
     gSPDisplayList(POLY_XLU_DISP++, object_spot03_object_DL_000B20);
 
@@ -142,18 +142,20 @@ void BgSpot03Taki_Draw(Actor* thisx, PlayState* play) {
     gSPDisplayList(POLY_XLU_DISP++, object_spot03_object_DL_000BC0);
 
     gSPSegment(POLY_XLU_DISP++, 0x08,
-               Gfx_TwoTexScroll(play->state.gfxCtx, 0, gameplayFrames * 1, gameplayFrames * 3, 64, 64, 1,
+               Gfx_TwoTexScroll(play->state.gfxCtx, G_TX_RENDERTILE, gameplayFrames * 1, gameplayFrames * 3, 64, 64, 1,
                                 -gameplayFrames, gameplayFrames * 3, 64, 64));
 
     gSPDisplayList(POLY_XLU_DISP++, object_spot03_object_DL_001580);
+
+    if (1) {}
 
     CLOSE_DISPS(play->state.gfxCtx, "../z_bg_spot03_taki.c", 358);
 
     this->bufferIndex = this->bufferIndex == 0;
 
     if (this->state >= WATERFALL_OPENING_IDLE && this->state <= WATERFALL_OPENED) {
-        Audio_PlaySoundWaterfall(&this->dyna.actor.projectedPos, 0.5f);
+        Audio_PlaySfxWaterfall(&this->dyna.actor.projectedPos, 0.5f);
     } else {
-        Audio_PlaySoundWaterfall(&this->dyna.actor.projectedPos, 1.0f);
+        Audio_PlaySfxWaterfall(&this->dyna.actor.projectedPos, 1.0f);
     }
 }

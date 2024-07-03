@@ -9,48 +9,48 @@
 
 #define FLAGS (ACTOR_FLAG_4 | ACTOR_FLAG_5)
 
-void BgSstFloor_Init(BgSstFloor* this, PlayState* play);
-void BgSstFloor_Destroy(BgSstFloor* this, PlayState* play);
-void BgSstFloor_Update(BgSstFloor* this, PlayState* play);
-void BgSstFloor_Draw(BgSstFloor* this, PlayState* play);
+void BgSstFloor_Init(Actor* thisx, PlayState* play);
+void BgSstFloor_Destroy(Actor* thisx, PlayState* play);
+void BgSstFloor_Update(Actor* thisx, PlayState* play);
+void BgSstFloor_Draw(Actor* thisx, PlayState* play);
 
 static s32 sUnkValues[] = { 0, 0, 0 }; // Unused, probably a zero vector
 
-const ActorInit Bg_Sst_Floor_InitVars = {
-    ACTOR_BG_SST_FLOOR,
-    ACTORCAT_BG,
-    FLAGS,
-    OBJECT_SST,
-    sizeof(BgSstFloor),
-    (ActorFunc)BgSstFloor_Init,
-    (ActorFunc)BgSstFloor_Destroy,
-    (ActorFunc)BgSstFloor_Update,
-    (ActorFunc)BgSstFloor_Draw,
+ActorInit Bg_Sst_Floor_InitVars = {
+    /**/ ACTOR_BG_SST_FLOOR,
+    /**/ ACTORCAT_BG,
+    /**/ FLAGS,
+    /**/ OBJECT_SST,
+    /**/ sizeof(BgSstFloor),
+    /**/ BgSstFloor_Init,
+    /**/ BgSstFloor_Destroy,
+    /**/ BgSstFloor_Update,
+    /**/ BgSstFloor_Draw,
 };
 
 static InitChainEntry sInitChain[] = {
     ICHAIN_VEC3F_DIV1000(scale.x, 100, ICHAIN_STOP),
 };
 
-void BgSstFloor_Init(BgSstFloor* thisx, PlayState* play) {
+void BgSstFloor_Init(Actor* thisx, PlayState* play) {
     s32 pad;
     BgSstFloor* this = (BgSstFloor*)thisx;
     CollisionHeader* colHeader = NULL;
 
     Actor_ProcessInitChain(&this->dyna.actor, sInitChain);
-    DynaPolyActor_Init(&this->dyna, DPM_PLAYER);
+    DynaPolyActor_Init(&this->dyna, DYNA_TRANSFORM_POS);
     CollisionHeader_GetVirtual(&gBongoDrumCol, &colHeader);
     this->dyna.bgId = DynaPoly_SetBgActor(play, &play->colCtx.dyna, &this->dyna.actor, colHeader);
 }
 
-void BgSstFloor_Destroy(BgSstFloor* thisx, PlayState* play) {
+void BgSstFloor_Destroy(Actor* thisx, PlayState* play) {
     s32 pad;
     BgSstFloor* this = (BgSstFloor*)thisx;
 
     DynaPoly_DeleteBgActor(play, &play->colCtx.dyna, this->dyna.bgId);
 }
 
-void BgSstFloor_Update(BgSstFloor* thisx, PlayState* play) {
+void BgSstFloor_Update(Actor* thisx, PlayState* play) {
     s32 pad;
     BgSstFloor* this = (BgSstFloor*)thisx;
     Player* player = GET_PLAYER(play);
@@ -60,15 +60,15 @@ void BgSstFloor_Update(BgSstFloor* thisx, PlayState* play) {
 
     if (1) {}
 
-    if (func_80043590(&this->dyna) && (this->dyna.actor.yDistToPlayer < 1000.0f)) {
-        Camera_ChangeSetting(play->cameraPtrs[CAM_ID_MAIN], CAM_SET_BOSS_BONGO);
+    if (DynaPolyActor_IsPlayerAbove(&this->dyna) && (this->dyna.actor.yDistToPlayer < 1000.0f)) {
+        Camera_RequestSetting(play->cameraPtrs[CAM_ID_MAIN], CAM_SET_BOSS_BONGO);
     } else {
-        Camera_ChangeSetting(play->cameraPtrs[CAM_ID_MAIN], CAM_SET_DUNGEON0);
+        Camera_RequestSetting(play->cameraPtrs[CAM_ID_MAIN], CAM_SET_DUNGEON0);
     }
 
-    if (func_8004356C(&this->dyna) && (player->fallDistance > 1000.0f)) {
+    if (DynaPolyActor_IsPlayerOnTop(&this->dyna) && (player->fallDistance > 1000.0f)) {
         this->dyna.actor.params = 1;
-        Audio_PlayActorSound2(&this->dyna.actor, NA_SE_EN_SHADEST_TAIKO_HIGH);
+        Actor_PlaySfx(&this->dyna.actor, NA_SE_EN_SHADEST_TAIKO_HIGH);
     }
 
     if (this->dyna.actor.params == BONGOFLOOR_HIT) {
@@ -80,7 +80,8 @@ void BgSstFloor_Update(BgSstFloor* thisx, PlayState* play) {
         this->dyna.actor.params = BONGOFLOOR_REST;
         this->drumPhase = 28;
 
-        if (func_8004356C(&this->dyna) && !(player->stateFlags1 & (PLAYER_STATE1_13 | PLAYER_STATE1_14))) {
+        if (DynaPolyActor_IsPlayerOnTop(&this->dyna) &&
+            !(player->stateFlags1 & (PLAYER_STATE1_13 | PLAYER_STATE1_14))) {
             distFromRim = 600.0f - this->dyna.actor.xzDistToPlayer;
             if (distFromRim > 0.0f) {
                 if (distFromRim > 350.0f) {
@@ -117,17 +118,17 @@ void BgSstFloor_Update(BgSstFloor* thisx, PlayState* play) {
         this->drumPhase--;
     }
     if (1) {}
-    func_8003EE6C(play, &play->colCtx.dyna);
+    DynaPoly_InvalidateLookup(play, &play->colCtx.dyna);
 }
 
-void BgSstFloor_Draw(BgSstFloor* thisx, PlayState* play) {
+void BgSstFloor_Draw(Actor* thisx, PlayState* play) {
     BgSstFloor* this = (BgSstFloor*)thisx;
 
     OPEN_DISPS(play->state.gfxCtx, "../z_bg_sst_floor.c", 277);
     Gfx_SetupDL_25Opa(play->state.gfxCtx);
     Matrix_Scale(1.0f, this->drumHeight * -0.0025f, 1.0f, MTXMODE_APPLY);
 
-    gSPMatrix(POLY_OPA_DISP++, Matrix_NewMtx(play->state.gfxCtx, "../z_bg_sst_floor.c", 283),
+    gSPMatrix(POLY_OPA_DISP++, MATRIX_NEW(play->state.gfxCtx, "../z_bg_sst_floor.c", 283),
               G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     gSPDisplayList(POLY_OPA_DISP++, gBongoDrumDL);

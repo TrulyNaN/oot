@@ -9,9 +9,9 @@
 
 #define FLAGS (ACTOR_FLAG_4 | ACTOR_FLAG_5)
 
-void BgGndDarkmeiro_Init(Actor* thisx, PlayState* play);
-void BgGndDarkmeiro_Destroy(Actor* thisx, PlayState* play);
-void BgGndDarkmeiro_Update(Actor* thisx, PlayState* play);
+void BgGndDarkmeiro_Init(Actor* thisx, PlayState* play2);
+void BgGndDarkmeiro_Destroy(Actor* thisx, PlayState* play2);
+void BgGndDarkmeiro_Update(Actor* thisx, PlayState* play2);
 void BgGndDarkmeiro_DrawInvisiblePath(Actor* thisx, PlayState* play);
 void BgGndDarkmeiro_DrawSwitchBlock(Actor* thisx, PlayState* play);
 void BgGndDarkmeiro_DrawStaticBlock(Actor* thisx, PlayState* play);
@@ -21,26 +21,26 @@ void BgGndDarkmeiro_UpdateBlockTimer(BgGndDarkmeiro* this, PlayState* play);
 void BgGndDarkmeiro_UpdateStaticBlock(BgGndDarkmeiro* this, PlayState* play);
 void BgGndDarkmeiro_UpdateSwitchBlock(BgGndDarkmeiro* this, PlayState* play);
 
-const ActorInit Bg_Gnd_Darkmeiro_InitVars = {
-    ACTOR_BG_GND_DARKMEIRO,
-    ACTORCAT_PROP,
-    FLAGS,
-    OBJECT_DEMO_KEKKAI,
-    sizeof(BgGndDarkmeiro),
-    (ActorFunc)BgGndDarkmeiro_Init,
-    (ActorFunc)BgGndDarkmeiro_Destroy,
-    (ActorFunc)BgGndDarkmeiro_Update,
-    NULL,
+ActorInit Bg_Gnd_Darkmeiro_InitVars = {
+    /**/ ACTOR_BG_GND_DARKMEIRO,
+    /**/ ACTORCAT_PROP,
+    /**/ FLAGS,
+    /**/ OBJECT_DEMO_KEKKAI,
+    /**/ sizeof(BgGndDarkmeiro),
+    /**/ BgGndDarkmeiro_Init,
+    /**/ BgGndDarkmeiro_Destroy,
+    /**/ BgGndDarkmeiro_Update,
+    /**/ NULL,
 };
 
 void BgGndDarkmeiro_ToggleBlock(BgGndDarkmeiro* this, PlayState* play) {
     if (this->actionFlags & 2) {
         if (this->timer1 == 0) {
-            func_8003EBF8(play, &play->colCtx.dyna, this->dyna.bgId);
+            DynaPoly_DisableCollision(play, &play->colCtx.dyna, this->dyna.bgId);
             this->actionFlags &= ~2;
         }
     } else if (this->timer1 != 0) {
-        func_8003EC50(play, &play->colCtx.dyna, this->dyna.bgId);
+        DynaPoly_EnableCollision(play, &play->colCtx.dyna, this->dyna.bgId);
         this->actionFlags |= 2;
     }
 }
@@ -55,7 +55,7 @@ void BgGndDarkmeiro_Init(Actor* thisx, PlayState* play2) {
     switch (this->dyna.actor.params & 0xFF) {
         case DARKMEIRO_INVISIBLE_PATH:
             this->dyna.actor.draw = BgGndDarkmeiro_DrawInvisiblePath;
-            this->dyna.actor.flags |= ACTOR_FLAG_7;
+            this->dyna.actor.flags |= ACTOR_FLAG_REACT_TO_LENS;
             break;
         case DARKMEIRO_CLEAR_BLOCK:
             CollisionHeader_GetVirtual(&gClearBlockCol, &colHeader);
@@ -68,7 +68,7 @@ void BgGndDarkmeiro_Init(Actor* thisx, PlayState* play2) {
                 thisx->draw = BgGndDarkmeiro_DrawSwitchBlock;
                 this->updateFunc = BgGndDarkmeiro_UpdateSwitchBlock;
                 if (!Flags_GetSwitch(play, (this->dyna.actor.params >> 8) & 0x3F)) {
-                    func_8003EBF8(play, &play->colCtx.dyna, this->dyna.bgId);
+                    DynaPoly_DisableCollision(play, &play->colCtx.dyna, this->dyna.bgId);
                 } else {
                     this->timer1 = 64;
                     this->actionFlags |= 2;
@@ -100,10 +100,11 @@ void BgGndDarkmeiro_Destroy(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
     BgGndDarkmeiro* this = (BgGndDarkmeiro*)thisx;
 
-    if ((this->dyna.actor.params & 0xFF) == 1) {
-        if (1) {}
-        DynaPoly_DeleteBgActor(play, &play->colCtx.dyna, this->dyna.bgId);
+    if ((this->dyna.actor.params & 0xFF) != 1) {
+        return;
     }
+
+    DynaPoly_DeleteBgActor(play, &play->colCtx.dyna, this->dyna.bgId);
 }
 
 void BgGndDarkmeiro_Noop(BgGndDarkmeiro* this, PlayState* play) {
@@ -123,8 +124,8 @@ void BgGndDarkmeiro_UpdateBlockTimer(BgGndDarkmeiro* this, PlayState* play) {
         } else {
             this->actionFlags |= 4;
             this->timer1 = 304;
-            Audio_PlaySoundGeneral(NA_SE_EV_RED_EYE, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
-                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            Audio_PlaySfxGeneral(NA_SE_EV_RED_EYE, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                                 &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
         }
     }
 
@@ -139,8 +140,8 @@ void BgGndDarkmeiro_UpdateBlockTimer(BgGndDarkmeiro* this, PlayState* play) {
         } else {
             this->actionFlags |= 8;
             this->timer2 = 304;
-            Audio_PlaySoundGeneral(NA_SE_EV_RED_EYE, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
-                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            Audio_PlaySfxGeneral(NA_SE_EV_RED_EYE, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                                 &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
         }
     }
 

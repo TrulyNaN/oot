@@ -3,25 +3,25 @@
 
 #define FLAGS 0
 
-void EnMThunder_Init(Actor* thisx, PlayState* play);
+void EnMThunder_Init(Actor* thisx, PlayState* play2);
 void EnMThunder_Destroy(Actor* thisx, PlayState* play);
 void EnMThunder_Update(Actor* thisx, PlayState* play);
-void EnMThunder_Draw(Actor* thisx, PlayState* play);
+void EnMThunder_Draw(Actor* thisx, PlayState* play2);
 
 void func_80A9F314(PlayState* play, f32 arg1);
 void func_80A9F408(EnMThunder* this, PlayState* play);
 void func_80A9F9B4(EnMThunder* this, PlayState* play);
 
-const ActorInit En_M_Thunder_InitVars = {
-    ACTOR_EN_M_THUNDER,
-    ACTORCAT_ITEMACTION,
-    FLAGS,
-    OBJECT_GAMEPLAY_KEEP,
-    sizeof(EnMThunder),
-    (ActorFunc)EnMThunder_Init,
-    (ActorFunc)EnMThunder_Destroy,
-    (ActorFunc)EnMThunder_Update,
-    (ActorFunc)EnMThunder_Draw,
+ActorInit En_M_Thunder_InitVars = {
+    /**/ ACTOR_EN_M_THUNDER,
+    /**/ ACTORCAT_ITEMACTION,
+    /**/ FLAGS,
+    /**/ OBJECT_GAMEPLAY_KEEP,
+    /**/ sizeof(EnMThunder),
+    /**/ EnMThunder_Init,
+    /**/ EnMThunder_Destroy,
+    /**/ EnMThunder_Update,
+    /**/ EnMThunder_Draw,
 };
 
 static ColliderCylinderInit D_80AA0420 = {
@@ -37,8 +37,8 @@ static ColliderCylinderInit D_80AA0420 = {
         ELEMTYPE_UNK2,
         { 0x00000001, 0x00, 0x00 },
         { 0xFFCFFFFF, 0x00, 0x00 },
-        TOUCH_ON | TOUCH_SFX_NONE,
-        BUMP_ON,
+        ATELEM_ON | ATELEM_SFX_NONE,
+        ACELEM_ON,
         OCELEM_ON,
     },
     { 200, 200, 0, { 0, 0, 0 } },
@@ -46,13 +46,6 @@ static ColliderCylinderInit D_80AA0420 = {
 
 static u32 D_80AA044C[] = { DMG_SPIN_MASTER, DMG_SPIN_KOKIRI, DMG_SPIN_GIANT };
 static u32 D_80AA0458[] = { DMG_JUMP_MASTER, DMG_JUMP_KOKIRI, DMG_JUMP_GIANT };
-
-static u16 sSfxIds[] = {
-    NA_SE_IT_ROLLING_CUT_LV2,
-    NA_SE_IT_ROLLING_CUT_LV1,
-    NA_SE_IT_ROLLING_CUT_LV2,
-    NA_SE_IT_ROLLING_CUT_LV1,
-};
 
 // Setup action
 void func_80A9EFE0(EnMThunder* this, EnMThunderActionFunc actionFunc) {
@@ -84,26 +77,26 @@ void EnMThunder_Init(Actor* thisx, PlayState* play2) {
     this->unk_1CA = 0;
 
     if (player->stateFlags2 & PLAYER_STATE2_17) {
-        if (!gSaveContext.isMagicAcquired || (gSaveContext.magicState != MAGIC_STATE_IDLE) ||
+        if (!gSaveContext.save.info.playerData.isMagicAcquired || (gSaveContext.magicState != MAGIC_STATE_IDLE) ||
             (((this->actor.params & 0xFF00) >> 8) &&
              !(Magic_RequestChange(play, (this->actor.params & 0xFF00) >> 8, MAGIC_CONSUME_NOW)))) {
-            Audio_PlaySoundGeneral(NA_SE_IT_ROLLING_CUT, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
-                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
-            Audio_PlaySoundGeneral(NA_SE_IT_SWORD_SWING_HARD, &player->actor.projectedPos, 4,
-                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            Audio_PlaySfxGeneral(NA_SE_IT_ROLLING_CUT, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                                 &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            Audio_PlaySfxGeneral(NA_SE_IT_SWORD_SWING_HARD, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                                 &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
             Actor_Kill(&this->actor);
             return;
         }
 
         player->stateFlags2 &= ~PLAYER_STATE2_17;
         this->unk_1CA = 1;
-        this->collider.info.toucher.dmgFlags = D_80AA044C[this->unk_1C7];
+        this->collider.elem.atDmgInfo.dmgFlags = D_80AA044C[this->unk_1C7];
         this->unk_1C6 = 1;
         this->unk_1C9 = ((this->unk_1C7 == 1) ? 2 : 4);
         func_80A9EFE0(this, func_80A9F9B4);
         this->unk_1C4 = 8;
-        Audio_PlaySoundGeneral(NA_SE_IT_ROLLING_CUT_LV1, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
-                               &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+        Audio_PlaySfxGeneral(NA_SE_IT_ROLLING_CUT_LV1, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                             &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
         this->unk_1AC = 1.0f;
     } else {
         func_80A9EFE0(this, func_80A9F408);
@@ -132,10 +125,10 @@ void func_80A9F350(EnMThunder* this, PlayState* play) {
 
     if (player->stateFlags2 & PLAYER_STATE2_17) {
         if (player->meleeWeaponAnimation >= PLAYER_MWA_SPIN_ATTACK_1H) {
-            Audio_PlaySoundGeneral(NA_SE_IT_ROLLING_CUT, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
-                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
-            Audio_PlaySoundGeneral(NA_SE_IT_SWORD_SWING_HARD, &player->actor.projectedPos, 4,
-                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            Audio_PlaySfxGeneral(NA_SE_IT_ROLLING_CUT, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                                 &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            Audio_PlaySfxGeneral(NA_SE_IT_SWORD_SWING_HARD, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                                 &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
         }
 
         Actor_Kill(&this->actor);
@@ -173,7 +166,7 @@ void func_80A9F408(EnMThunder* this, PlayState* play) {
     }
 
     if (player->unk_858 >= 0.1f) {
-        func_800AA000(0.0f, (s32)(player->unk_858 * 150.0f) & 0xFF, 2, (s32)(player->unk_858 * 150.0f) & 0xFF);
+        Rumble_Request(0.0f, (s32)(player->unk_858 * 150.0f), 2, (s32)(player->unk_858 * 150.0f));
     }
 
     if (player->stateFlags2 & PLAYER_STATE2_17) {
@@ -183,10 +176,10 @@ void func_80A9F408(EnMThunder* this, PlayState* play) {
 
         if (player->unk_858 <= 0.15f) {
             if ((player->unk_858 >= 0.1f) && (player->meleeWeaponAnimation >= PLAYER_MWA_SPIN_ATTACK_1H)) {
-                Audio_PlaySoundGeneral(NA_SE_IT_ROLLING_CUT, &player->actor.projectedPos, 4,
-                                       &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
-                Audio_PlaySoundGeneral(NA_SE_IT_SWORD_SWING_HARD, &player->actor.projectedPos, 4,
-                                       &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+                Audio_PlaySfxGeneral(NA_SE_IT_ROLLING_CUT, &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                                     &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+                Audio_PlaySfxGeneral(NA_SE_IT_SWORD_SWING_HARD, &player->actor.projectedPos, 4,
+                                     &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
             }
             Actor_Kill(&this->actor);
             return;
@@ -196,19 +189,30 @@ void func_80A9F408(EnMThunder* this, PlayState* play) {
                 gSaveContext.magicState = MAGIC_STATE_CONSUME_SETUP;
             }
             if (player->unk_858 < 0.85f) {
-                this->collider.info.toucher.dmgFlags = D_80AA044C[this->unk_1C7];
+                this->collider.elem.atDmgInfo.dmgFlags = D_80AA044C[this->unk_1C7];
                 this->unk_1C6 = 1;
                 this->unk_1C9 = ((this->unk_1C7 == 1) ? 2 : 4);
             } else {
-                this->collider.info.toucher.dmgFlags = D_80AA0458[this->unk_1C7];
+                this->collider.elem.atDmgInfo.dmgFlags = D_80AA0458[this->unk_1C7];
                 this->unk_1C6 = 0;
                 this->unk_1C9 = ((this->unk_1C7 == 1) ? 4 : 8);
             }
 
             func_80A9EFE0(this, func_80A9F9B4);
             this->unk_1C4 = 8;
-            Audio_PlaySoundGeneral(sSfxIds[this->unk_1C6], &player->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
-                                   &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+
+            {
+                static u16 sSfxIds[] = {
+                    NA_SE_IT_ROLLING_CUT_LV2,
+                    NA_SE_IT_ROLLING_CUT_LV1,
+                    NA_SE_IT_ROLLING_CUT_LV2,
+                    NA_SE_IT_ROLLING_CUT_LV1,
+                };
+
+                Audio_PlaySfxGeneral(sSfxIds[this->unk_1C6], &player->actor.projectedPos, 4,
+                                     &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+            }
+
             this->unk_1AC = 1.0f;
             return;
         }
@@ -326,15 +330,16 @@ void EnMThunder_Draw(Actor* thisx, PlayState* play2) {
     OPEN_DISPS(play->state.gfxCtx, "../z_en_m_thunder.c", 844);
     Gfx_SetupDL_25Xlu(play->state.gfxCtx);
     Matrix_Scale(0.02f, 0.02f, 0.02f, MTXMODE_APPLY);
-    gSPMatrix(POLY_XLU_DISP++, Matrix_NewMtx(play->state.gfxCtx, "../z_en_m_thunder.c", 853),
+    gSPMatrix(POLY_XLU_DISP++, MATRIX_NEW(play->state.gfxCtx, "../z_en_m_thunder.c", 853),
               G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     switch (this->unk_1C6) {
         case 0:
         case 1:
             gSPSegment(POLY_XLU_DISP++, 0x08,
-                       Gfx_TwoTexScroll(play->state.gfxCtx, 0, 0xFF - ((u8)(s32)(this->unk_1B4 * 30) & 0xFF), 0, 0x40,
-                                        0x20, 1, 0xFF - ((u8)(s32)(this->unk_1B4 * 20) & 0xFF), 0, 8, 8));
+                       Gfx_TwoTexScroll(play->state.gfxCtx, G_TX_RENDERTILE,
+                                        0xFF - ((u8)(s32)(this->unk_1B4 * 30) & 0xFF), 0, 0x40, 0x20, 1,
+                                        0xFF - ((u8)(s32)(this->unk_1B4 * 20) & 0xFF), 0, 8, 8));
             break;
     }
 
@@ -383,12 +388,12 @@ void EnMThunder_Draw(Actor* thisx, PlayState* play2) {
         phi_t1 = 0x14;
     }
     Matrix_Scale(1.0f, phi_f14, phi_f14, MTXMODE_APPLY);
-    gSPMatrix(POLY_XLU_DISP++, Matrix_NewMtx(play->state.gfxCtx, "../z_en_m_thunder.c", 960),
+    gSPMatrix(POLY_XLU_DISP++, MATRIX_NEW(play->state.gfxCtx, "../z_en_m_thunder.c", 960),
               G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     gSPSegment(POLY_XLU_DISP++, 0x09,
-               Gfx_TwoTexScroll(play->state.gfxCtx, 0, (play->gameplayFrames * 5) & 0xFF, 0, 0x20, 0x20, 1,
-                                (play->gameplayFrames * 20) & 0xFF, (play->gameplayFrames * phi_t1) & 0xFF, 8, 8));
+               Gfx_TwoTexScroll(play->state.gfxCtx, G_TX_RENDERTILE, (play->gameplayFrames * 5) & 0xFF, 0, 0x20, 0x20,
+                                1, (play->gameplayFrames * 20) & 0xFF, (play->gameplayFrames * phi_t1) & 0xFF, 8, 8));
 
     gSPDisplayList(POLY_XLU_DISP++, gSpinAttackChargingDL);
 
