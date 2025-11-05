@@ -1,8 +1,8 @@
 #include "ultra64.h"
 #include "z_lib.h"
 #include "ichain.h"
+#include "printf.h"
 #include "regs.h"
-#include "macros.h"
 #include "sys_math.h"
 #include "rand.h"
 #include "sfx.h"
@@ -16,7 +16,7 @@
  * - the arguments are in a different order,
  * - `val` is a `u8` instead of the standard `s32`.
  *
- * @see There are two other memsets in this codebase, __osMemset(), MemSet()
+ * @see There are two other memsets in this codebase, memset(), MemSet()
  *
  * @param dest address to start at
  * @param len number of bytes to write
@@ -608,22 +608,19 @@ void Color_RGBA8_Copy(Color_RGBA8* dst, Color_RGBA8* src) {
  * Play a sound effect at the center of the screen.
  */
 void Sfx_PlaySfxCentered(u16 sfxId) {
-    Audio_PlaySfxGeneral(sfxId, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale,
-                         &gSfxDefaultReverb);
+    SFX_PLAY_CENTERED(sfxId);
 }
 
 /**
  * Play a sound effect at the center of the screen. Identical to `Sfx_PlaySfxCentered`.
  */
 void Sfx_PlaySfxCentered2(u16 sfxId) {
-    Audio_PlaySfxGeneral(sfxId, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale,
-                         &gSfxDefaultReverb);
+    SFX_PLAY_CENTERED(sfxId);
 }
 
 /**
  * Play a sound effect at the requested position.
  */
 void Sfx_PlaySfxAtPos(Vec3f* projectedPos, u16 sfxId) {
-    Audio_PlaySfxGeneral(sfxId, projectedPos, 4, &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale,
-                         &gSfxDefaultReverb);
+    SFX_PLAY_AT_POS(projectedPos, sfxId);
 }
